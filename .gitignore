@@ -1,0 +1,25 @@
+# Установленные зависимости
+node_modules/
+
+# Результаты сборки
+dist/
+build/
+coverage/
+
+# Переменные окружения и секреты
+.env
+.env.*
+!.env.example
+
+# Логи
+*.log
+
+# Служебные файлы
+*.tsbuildinfo
+.DS_Store
+.vscode/
+.idea/
+
+# Отчёты браузерных тестов
+playwright-report/
+test-results/
