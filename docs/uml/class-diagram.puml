@@ -1,0 +1,292 @@
+
+@startuml
+
+title EDS Schedule — Объектная модель v0.1
+
+' Настройки оформления
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+skinparam nodesep 45
+skinparam ranksep 50
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam backgroundColor white
+skinparam classBackgroundColor white
+skinparam classBorderColor black
+skinparam ArrowColor black
+skinparam packageBorderColor black
+skinparam packageBackgroundColor white
+skinparam monochrome true
+
+hide circle
+hide empty members
+
+' ==========================================
+' Организация учебного времени
+' ==========================================
+
+package "Организация учебного времени" {
+
+    class AcademicYear {
+        + id: number
+        - name: string
+        - startDate: Date
+        - endDate: Date
+
+        + containsDate(date: Date): boolean
+    }
+
+    class Semester {
+        + id: number
+        - number: number
+        - startDate: Date
+        - endDate: Date
+
+        + containsDate(date: Date): boolean
+    }
+
+    class AcademicWeek {
+        + id: number
+        - number: number
+        - startDate: Date
+        - endDate: Date
+
+        + containsDate(date: Date): boolean
+    }
+}
+
+' ==========================================
+' Организация обучения
+' ==========================================
+
+package "Организация обучения" {
+
+    class EducationalProgram {
+        + id: number
+        - name: string
+    }
+
+    class StudyGroup {
+        + id: number
+        - name: string
+        - course: number
+        - studyForm: StudyForm
+    }
+
+    class Subgroup {
+        + id: number
+        - name: string
+    }
+
+    enum StudyForm {
+        FULL_TIME
+        PART_TIME
+    }
+}
+
+' ==========================================
+' Учебные ресурсы
+' ==========================================
+
+package "Учебные ресурсы" {
+
+    class Teacher {
+        + id: number
+        - lastName: string
+        - firstName: string
+        - middleName: string | null
+        - title: string | null
+        - isActive: boolean
+
+        + getFullName(): string
+    }
+
+    class Discipline {
+        + id: number
+        - name: string
+        - shortName: string | null
+        - isActive: boolean
+    }
+
+    class Classroom {
+        + id: number
+        - number: string
+        - name: string | null
+        - capacity: number | null
+        - isActive: boolean
+    }
+}
+
+' ==========================================
+' Управление расписанием
+' ==========================================
+
+package "Управление расписанием" {
+
+    class Schedule {
+        + id: number
+        - academicWeek: AcademicWeek
+        - version: number
+        - status: ScheduleStatus
+        - createdAt: Date
+        - publishedAt: Date | null
+        - lessons: Lesson[]
+
+        + addLesson(lesson: Lesson): void
+        + removeLesson(id: number): void
+        + getLessons(): Lesson[]
+        + publish(): void
+        + archive(): void
+    }
+
+    class Lesson {
+        + id: number
+        - date: Date
+        - startTime: string
+        - endTime: string
+        - lessonType: LessonType
+        - teacher: Teacher
+        - discipline: Discipline
+        - studyGroup: StudyGroup
+        - subgroup: Subgroup | null
+        - classroom: Classroom | null
+
+        + overlapsWith(other: Lesson): boolean
+        + getDuration(): number
+        + reschedule(date: Date, startTime: string, endTime: string): void
+    }
+
+    enum LessonType {
+        LECTURE
+        SEMINAR
+        PRACTICAL
+        CONSULTATION
+        EXAM
+        CREDIT
+    }
+
+    enum ScheduleStatus {
+        DRAFT
+        PUBLISHED
+        ARCHIVED
+    }
+}
+
+' ==========================================
+' Проверка конфликтов
+' ==========================================
+
+package "Проверка конфликтов" {
+
+    class ConflictChecker {
+        + checkPair(first: Lesson, second: Lesson): Conflict[]
+        + checkSchedule(lessons: Lesson[]): Conflict[]
+    }
+
+    class Conflict {
+        - type: ConflictType
+        - firstLessonId: number
+        - secondLessonId: number
+        - message: string
+    }
+
+    enum ConflictType {
+        TEACHER
+        CLASSROOM
+        STUDY_GROUP
+        SUBGROUP
+        GROUP_SUBGROUP
+    }
+}
+
+' ==========================================
+' Управление доступом
+' ==========================================
+
+package "Управление доступом" {
+
+    class User {
+        + id: number
+        - username: string
+        - passwordHash: string
+        - fullName: string
+        - role: Role
+        - isActive: boolean
+        - createdAt: Date
+
+        + activate(): void
+        + deactivate(): void
+        + hasRole(role: Role): boolean
+    }
+
+    enum Role {
+        ADMIN
+    }
+
+    class AuthService {
+    }
+
+    class JwtAuthGuard {
+    }
+
+    class RolesGuard {
+    }
+}
+
+' ==========================================
+' Связи между классами
+' ==========================================
+
+' Организация учебного времени
+
+AcademicYear "1" -- "1..*" Semester
+Semester "1" -- "1..*" AcademicWeek
+
+' Организация обучения
+
+EducationalProgram "1" -- "0..*" StudyGroup
+StudyGroup "1" -- "0..*" Subgroup
+StudyGroup ..> StudyForm
+
+' Расписание и учебные занятия
+
+AcademicWeek "1" -- "0..*" Schedule
+
+Schedule "1" *-- "0..*" Lesson
+
+Schedule ..> ScheduleStatus
+Lesson ..> LessonType
+
+' Связи занятия с учебными ресурсами
+
+Teacher "1" -- "0..*" Lesson
+Discipline "1" -- "0..*" Lesson
+Classroom "0..1" -- "0..*" Lesson
+
+' Связи занятия с учебными группами
+
+StudyGroup "1" -- "0..*" Lesson
+Subgroup "0..1" -- "0..*" Lesson
+
+' Проверка конфликтов
+
+ConflictChecker ..> Lesson : проверяет
+ConflictChecker ..> Conflict : формирует
+Conflict ..> ConflictType
+
+' Управление доступом
+
+User ..> Role
+
+AuthService ..> User
+
+JwtAuthGuard ..> User
+
+RolesGuard ..> User
+RolesGuard ..> Role
+
+@enduml
