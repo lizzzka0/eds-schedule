@@ -1,0 +1,199 @@
+@startuml
+
+title EDS Schedule — ER-диаграмма базы данных v0.1
+
+skinparam shadowing false
+skinparam monochrome true
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam nodesep 45
+skinparam ranksep 50
+skinparam linetype ortho
+
+hide circle
+hide methods
+
+' ==========================================
+' Учебные периоды
+' ==========================================
+
+entity academic_years {
+    * id : INTEGER <<PK>>
+    --
+    * name : VARCHAR(9) <<UQ>>
+    * start_date : DATE
+    * end_date : DATE
+}
+
+entity semesters {
+    * id : INTEGER <<PK>>
+    --
+    * academic_year_id : INTEGER <<FK>>
+    * number : INTEGER
+    * start_date : DATE
+    * end_date : DATE
+}
+
+entity academic_weeks {
+    * id : INTEGER <<PK>>
+    --
+    * semester_id : INTEGER <<FK>>
+    * number : INTEGER
+    * start_date : DATE
+    * end_date : DATE
+}
+
+' ==========================================
+' Организация обучения
+' ==========================================
+
+entity educational_programs {
+    * id : INTEGER <<PK>>
+    --
+    * name : VARCHAR(255) <<UQ>>
+}
+
+entity study_groups {
+    * id : INTEGER <<PK>>
+    --
+    * program_id : INTEGER <<FK>>
+    * name : VARCHAR(100)
+    * study_form : ENUM
+    * is_active : BOOLEAN
+}
+
+entity subgroups {
+    * id : INTEGER <<PK>>
+    --
+    * study_group_id : INTEGER <<FK>>
+    * name : VARCHAR(100)
+    * is_active : BOOLEAN
+}
+
+entity group_academic_years {
+    * id : INTEGER <<PK>>
+    --
+    * study_group_id : INTEGER <<FK>>
+    * academic_year_id : INTEGER <<FK>>
+    * course : INTEGER
+}
+
+' ==========================================
+' Учебные ресурсы
+' ==========================================
+
+entity teachers {
+    * id : INTEGER <<PK>>
+    --
+    * last_name : VARCHAR(100)
+    * first_name : VARCHAR(100)
+    middle_name : VARCHAR(100)
+    title : VARCHAR(150)
+    * is_active : BOOLEAN
+}
+
+entity disciplines {
+    * id : INTEGER <<PK>>
+    --
+    * name : VARCHAR(255) <<UQ>>
+    short_name : VARCHAR(100)
+    * is_active : BOOLEAN
+}
+
+entity classrooms {
+    * id : INTEGER <<PK>>
+    --
+    * number : VARCHAR(30) <<UQ>>
+    name : VARCHAR(150)
+    capacity : INTEGER
+    * is_active : BOOLEAN
+}
+
+' ==========================================
+' Расписание и учебные занятия
+' ==========================================
+
+entity schedules {
+    * id : INTEGER <<PK>>
+    --
+    * academic_week_id : INTEGER <<FK>>
+    * version : INTEGER
+    * status : ENUM
+    * created_at : TIMESTAMPTZ
+    published_at : TIMESTAMPTZ
+}
+
+entity lessons {
+    * id : INTEGER <<PK>>
+    --
+    * schedule_id : INTEGER <<FK>>
+    * group_academic_year_id : INTEGER <<FK>>
+    subgroup_id : INTEGER <<FK>>
+    * teacher_id : INTEGER <<FK>>
+    * discipline_id : INTEGER <<FK>>
+    classroom_id : INTEGER <<FK>>
+    * lesson_date : DATE
+    * start_time : TIME(0)
+    * end_time : TIME(0)
+    * lesson_type : ENUM
+}
+
+' ==========================================
+' Управление доступом
+' ==========================================
+
+entity users {
+    * id : INTEGER <<PK>>
+    --
+    * username : VARCHAR(100) <<UQ>>
+    * password_hash : TEXT
+    * full_name : VARCHAR(255)
+    * role : ENUM
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMPTZ
+}
+
+' ==========================================
+' Связи между таблицами
+' ==========================================
+
+' Учебные периоды
+
+academic_years ||--o{ semesters
+semesters ||--o{ academic_weeks
+
+' Организация обучения
+
+educational_programs ||--o{ study_groups
+study_groups ||--o{ subgroups
+
+study_groups ||--o{ group_academic_years
+academic_years ||--o{ group_academic_years
+
+' Расписание
+
+academic_weeks ||--o{ schedules
+schedules ||--o{ lessons
+
+' Учебные группы и подгруппы
+
+group_academic_years ||--o{ lessons
+subgroups |o--o{ lessons
+
+' Учебные ресурсы
+
+teachers ||--o{ lessons
+disciplines ||--o{ lessons
+classrooms |o--o{ lessons
+
+legend bottom
+    PK — первичный ключ
+    FK — внешний ключ
+    UQ — уникальный атрибут
+    Заполненная точка — обязательный атрибут
+    База данных: eds_schedule
+    Схема: schedule
+endlegend
+
+@enduml

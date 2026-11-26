@@ -1,14 +1,12 @@
-
 @startuml
 
-title EDS Schedule — Объектная модель v0.1
+title EDS Schedule — Объектная модель v0.2
 
 ' Настройки оформления
 
 skinparam classAttributeIconSize 0
 skinparam shadowing false
 skinparam packageStyle rectangle
-
 skinparam nodesep 45
 skinparam ranksep 50
 skinparam defaultFontName Arial
@@ -73,13 +71,21 @@ package "Организация обучения" {
     class StudyGroup {
         + id: number
         - name: string
-        - course: number
         - studyForm: StudyForm
+        - isActive: boolean
     }
 
     class Subgroup {
         + id: number
         - name: string
+        - isActive: boolean
+    }
+
+    class GroupAcademicYear {
+        + id: number
+        - studyGroup: StudyGroup
+        - academicYear: AcademicYear
+        - course: number
     }
 
     enum StudyForm {
@@ -151,7 +157,7 @@ package "Управление расписанием" {
         - lessonType: LessonType
         - teacher: Teacher
         - discipline: Discipline
-        - studyGroup: StudyGroup
+        - groupAcademicYear: GroupAcademicYear
         - subgroup: Subgroup | null
         - classroom: Classroom | null
 
@@ -243,33 +249,38 @@ package "Управление доступом" {
 
 ' Организация учебного времени
 
-AcademicYear "1" -- "1..*" Semester
-Semester "1" -- "1..*" AcademicWeek
+AcademicYear "1" -- "0..*" Semester
+Semester "1" -- "0..*" AcademicWeek
 
 ' Организация обучения
 
 EducationalProgram "1" -- "0..*" StudyGroup
 StudyGroup "1" -- "0..*" Subgroup
+
 StudyGroup ..> StudyForm
+
+' История обучения группы
+
+StudyGroup "1" -- "0..*" GroupAcademicYear
+AcademicYear "1" -- "0..*" GroupAcademicYear
 
 ' Расписание и учебные занятия
 
 AcademicWeek "1" -- "0..*" Schedule
-
 Schedule "1" *-- "0..*" Lesson
 
 Schedule ..> ScheduleStatus
 Lesson ..> LessonType
 
-' Связи занятия с учебными ресурсами
+' Связи занятий с учебными ресурсами
 
 Teacher "1" -- "0..*" Lesson
 Discipline "1" -- "0..*" Lesson
 Classroom "0..1" -- "0..*" Lesson
 
-' Связи занятия с учебными группами
+' Связи занятий с группами
 
-StudyGroup "1" -- "0..*" Lesson
+GroupAcademicYear "1" -- "0..*" Lesson
 Subgroup "0..1" -- "0..*" Lesson
 
 ' Проверка конфликтов
@@ -281,11 +292,8 @@ Conflict ..> ConflictType
 ' Управление доступом
 
 User ..> Role
-
 AuthService ..> User
-
 JwtAuthGuard ..> User
-
 RolesGuard ..> User
 RolesGuard ..> Role
 
