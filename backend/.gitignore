@@ -1,0 +1,13 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+/src/generated/prisma
+# Автоматически созданные инструкции для ИИ-ассистентов
+/.agents/skills/prisma-*/
+/.claude/
+/.windsurf/
+/skills-lock.json
+
+# Сгенерированный Prisma Client
+/src/generated/prisma/

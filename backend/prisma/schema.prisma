@@ -1,0 +1,240 @@
+// EDS Schedule
+// Реляционная модель базы данных
+// PostgreSQL: eds_schedule
+// Схема: schedule
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// Перечисления
+// ==========================================
+
+enum StudyForm {
+  FULL_TIME
+  PART_TIME
+}
+
+enum LessonType {
+  LECTURE
+  SEMINAR
+  PRACTICAL
+  CONSULTATION
+  EXAM
+  CREDIT
+}
+
+enum ScheduleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Role {
+  ADMIN
+}
+
+// ==========================================
+// Организация учебного времени
+// ==========================================
+
+model AcademicYear {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(9)
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+
+  semesters          Semester[]
+  groupAcademicYears GroupAcademicYear[]
+
+  @@map("academic_years")
+}
+
+model Semester {
+  id             Int      @id @default(autoincrement())
+  academicYearId Int      @map("academic_year_id")
+  number         Int
+  startDate      DateTime @map("start_date") @db.Date
+  endDate        DateTime @map("end_date") @db.Date
+
+  academicYear  AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  academicWeeks AcademicWeek[]
+
+  @@unique([academicYearId, number])
+  @@map("semesters")
+}
+
+model AcademicWeek {
+  id         Int      @id @default(autoincrement())
+  semesterId Int      @map("semester_id")
+  number     Int
+  startDate  DateTime @map("start_date") @db.Date
+  endDate    DateTime @map("end_date") @db.Date
+
+  semester  Semester   @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  schedules Schedule[]
+
+  @@unique([semesterId, number])
+  @@map("academic_weeks")
+}
+
+// ==========================================
+// Организация обучения
+// ==========================================
+
+model EducationalProgram {
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(255)
+
+  studyGroups StudyGroup[]
+
+  @@map("educational_programs")
+}
+
+model StudyGroup {
+  id        Int       @id @default(autoincrement())
+  programId Int       @map("program_id")
+  name      String    @db.VarChar(100)
+  studyForm StudyForm @map("study_form")
+  isActive  Boolean   @default(true) @map("is_active")
+
+  program EducationalProgram @relation(fields: [programId], references: [id], onDelete: Restrict)
+
+  subgroups          Subgroup[]
+  groupAcademicYears GroupAcademicYear[]
+
+  @@map("study_groups")
+}
+
+model Subgroup {
+  id           Int     @id @default(autoincrement())
+  studyGroupId Int     @map("study_group_id")
+  name         String  @db.VarChar(100)
+  isActive     Boolean @default(true) @map("is_active")
+
+  studyGroup StudyGroup @relation(fields: [studyGroupId], references: [id], onDelete: Restrict)
+  lessons    Lesson[]
+
+  @@unique([studyGroupId, name])
+  @@map("subgroups")
+}
+
+model GroupAcademicYear {
+  id             Int @id @default(autoincrement())
+  studyGroupId   Int @map("study_group_id")
+  academicYearId Int @map("academic_year_id")
+  course         Int
+
+  studyGroup   StudyGroup   @relation(fields: [studyGroupId], references: [id], onDelete: Restrict)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  lessons Lesson[]
+
+  @@unique([studyGroupId, academicYearId])
+  @@map("group_academic_years")
+}
+
+// ==========================================
+// Учебные ресурсы
+// ==========================================
+
+model Teacher {
+  id         Int     @id @default(autoincrement())
+  lastName   String  @map("last_name") @db.VarChar(100)
+  firstName  String  @map("first_name") @db.VarChar(100)
+  middleName String? @map("middle_name") @db.VarChar(100)
+  title      String? @db.VarChar(150)
+  isActive   Boolean @default(true) @map("is_active")
+
+  lessons Lesson[]
+
+  @@map("teachers")
+}
+
+model Discipline {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique @db.VarChar(255)
+  shortName String? @map("short_name") @db.VarChar(100)
+  isActive  Boolean @default(true) @map("is_active")
+
+  lessons Lesson[]
+
+  @@map("disciplines")
+}
+
+model Classroom {
+  id       Int     @id @default(autoincrement())
+  number   String  @unique @db.VarChar(30)
+  name     String? @db.VarChar(150)
+  capacity Int?
+  isActive Boolean @default(true) @map("is_active")
+
+  lessons Lesson[]
+
+  @@map("classrooms")
+}
+
+// ==========================================
+// Управление расписанием
+// ==========================================
+
+model Schedule {
+  id             Int            @id @default(autoincrement())
+  academicWeekId Int            @map("academic_week_id")
+  version        Int
+  status         ScheduleStatus @default(DRAFT)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  publishedAt    DateTime?      @map("published_at") @db.Timestamptz(6)
+
+  academicWeek AcademicWeek @relation(fields: [academicWeekId], references: [id], onDelete: Restrict)
+
+  lessons Lesson[]
+
+  @@unique([academicWeekId, version])
+  @@map("schedules")
+}
+
+model Lesson {
+  id                  Int        @id @default(autoincrement())
+  scheduleId          Int        @map("schedule_id")
+  groupAcademicYearId Int        @map("group_academic_year_id")
+  subgroupId          Int?       @map("subgroup_id")
+  teacherId           Int        @map("teacher_id")
+  disciplineId        Int        @map("discipline_id")
+  classroomId         Int?       @map("classroom_id")
+  lessonDate          DateTime   @map("lesson_date") @db.Date
+  startTime           DateTime   @map("start_time") @db.Time(0)
+  endTime             DateTime   @map("end_time") @db.Time(0)
+  lessonType          LessonType @map("lesson_type")
+
+  schedule          Schedule          @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  groupAcademicYear GroupAcademicYear @relation(fields: [groupAcademicYearId], references: [id], onDelete: Restrict)
+  subgroup          Subgroup?         @relation(fields: [subgroupId], references: [id], onDelete: Restrict)
+  teacher           Teacher           @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  discipline        Discipline        @relation(fields: [disciplineId], references: [id], onDelete: Restrict)
+  classroom         Classroom?        @relation(fields: [classroomId], references: [id], onDelete: Restrict)
+
+  @@map("lessons")
+}
+
+// ==========================================
+// Управление доступом
+// ==========================================
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique @db.VarChar(100)
+  passwordHash String   @map("password_hash") @db.Text
+  fullName     String   @map("full_name") @db.VarChar(255)
+  role         Role     @default(ADMIN)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("users")
+}
