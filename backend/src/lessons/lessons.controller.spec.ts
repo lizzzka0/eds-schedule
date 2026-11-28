@@ -15,18 +15,20 @@ describe('LessonsController', () => {
       '10:30',
       'Церковнославянский язык',
       'Практическое занятие',
-      'Тестовый преподаватель',
-      'Демонстрационная группа',
-      '101',
+      'Иванов Александр Сергеевич',
+      'ДЕМО-Б1',
+      'ДЕМО-101',
     ),
   ];
 
+  // Имитация асинхронного сервиса
   const mockService = {
-    findAll: jest.fn(() => mockLessons),
+    findAll: jest.fn<() => Promise<Lesson[]>>(),
   };
 
   beforeEach(async () => {
-    mockService.findAll.mockClear();
+    mockService.findAll.mockReset();
+    mockService.findAll.mockResolvedValue(mockLessons);
 
     const module: TestingModule =
       await Test.createTestingModule({
@@ -39,19 +41,22 @@ describe('LessonsController', () => {
         ],
       }).compile();
 
-    controller =
-      module.get<LessonsController>(LessonsController);
+    controller = module.get<LessonsController>(
+      LessonsController,
+    );
   });
 
+  // BE-10
   it('контроллер должен быть создан', () => {
     expect(controller).toBeDefined();
   });
 
-  it('должен возвращать занятия из сервиса', () => {
-    const result = controller.findAll();
+  // BE-11
+  it('должен асинхронно возвращать занятия из сервиса', async () => {
+    const result = await controller.findAll();
 
     expect(result).toEqual(mockLessons);
+
     expect(mockService.findAll).toHaveBeenCalledTimes(1);
   });
 });
-

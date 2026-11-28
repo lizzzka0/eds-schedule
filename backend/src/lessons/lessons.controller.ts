@@ -9,7 +9,8 @@ export class LessonsController {
   ) {}
 
   @Get()
-  findAll(): Lesson[] {
+  async findAll(): Promise<Lesson[]> {
     return this.lessonsService.findAll();
   }
 }
+
